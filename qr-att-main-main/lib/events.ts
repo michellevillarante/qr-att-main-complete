@@ -75,7 +75,10 @@ export async function getEventByCode(
     .eq('event_code', code)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    throw error;
+  }
+  if (!data) {
     return null;
   }
 

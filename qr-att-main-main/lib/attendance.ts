@@ -61,7 +61,18 @@ export async function registerAttendance(
 
   const title = payload.title ?? payload.event;
 
-  const foundEvent = await getEventByCode(payload.event);
+  let foundEvent;
+  try {
+    foundEvent = await getEventByCode(payload.event);
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? `Could not look up the event in Supabase: ${error.message}`
+          : 'Could not look up the event in Supabase.',
+    };
+  }
 
   let event: { id: string; title: string };
   if (foundEvent) {
@@ -90,8 +101,8 @@ export async function registerAttendance(
       return {
         success: false,
         message: missingTable
-          ? 'Event table is missing. Run the SQL in supabase/schema.sql in Supabase SQL Editor.'
-          : 'not QR event code',
+          ? 'Event table is missing. Run docs/schema.sql in Supabase SQL Editor.'
+          : insertError?.message ?? 'Could not save the event in Supabase.',
       };
     }
     event = newEvent;

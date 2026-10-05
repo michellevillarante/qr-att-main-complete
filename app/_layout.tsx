@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Stack, usePathname, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 
 import { COLORS } from '@/constants/colors';
 import { initAuth, useAuth } from '@/lib/auth';
 import { getProfile } from '@/lib/profiles';
+import { ThemeProvider, useTheme } from '@/lib/theme';
 
 const AUTH_PATHS = ['/login', '/register'];
 
@@ -37,8 +39,25 @@ export default function RootLayout() {
   }, [initialized, user, pathname, router]);
 
   return (
-    <View style={styles.root}>
-      <Stack>
+    <ThemeProvider>
+      <RootShell initialized={initialized} />
+    </ThemeProvider>
+  );
+}
+
+function RootShell({ initialized }: { initialized: boolean }) {
+  const { colors, mode } = useTheme();
+
+  return (
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.textPrimary,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
@@ -46,8 +65,8 @@ export default function RootLayout() {
       </Stack>
 
       {!initialized && (
-        <View style={styles.loader} pointerEvents="none">
-          <ActivityIndicator size="large" color={COLORS.primary} />
+        <View style={[styles.loader, { backgroundColor: colors.background }]} pointerEvents="none">
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       )}
     </View>
@@ -63,6 +82,5 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.background,
   },
 });

@@ -1,14 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS } from '@/constants/colors';
+import { useTheme } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
+import type { Palette } from '@/constants/themes';
 
 export default function TabsLayout() {
   const router = useRouter();
   const { user, initialized } = useAuth();
+  const { colors, radius, mode } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useEffect(() => {
     if (initialized && !user) {
@@ -19,7 +22,7 @@ export default function TabsLayout() {
   if (!initialized || !user) {
     return (
       <View style={styles.loader}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -28,15 +31,25 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textSecondary,
-        headerStyle: { backgroundColor: COLORS.background },
-        headerTintColor: COLORS.textPrimary,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.muted,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.2,
+        },
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: colors.textPrimary,
         tabBarStyle: {
-          backgroundColor: COLORS.card,
-          borderTopColor: COLORS.border,
+          backgroundColor: mode === 'dark' ? colors.elevated : colors.card,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
         },
+        tabBarItemStyle: {
+          borderRadius: Math.min(radius.button, 16),
+          marginHorizontal: 4,
+        },
+        tabBarIconStyle: { marginTop: 2 },
       }}
     >
       <Tabs.Screen
@@ -92,11 +105,12 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  loader: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.background,
-  },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    loader: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: c.background,
+    },
+  });

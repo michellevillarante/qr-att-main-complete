@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "qr-attendance",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
@@ -51,8 +51,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "cc1d4d05-6292-40bd-81d2-dbdb66927f71"
+        "projectId": "e4e87bb4-cd52-4e33-a9fc-fb08a615fe28"
       }
-    }
+    },
+    "owner": "nibert"
   }
 }

@@ -2,15 +2,18 @@ import { useCallback, useState } from 'react';
 import {
   Alert,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 import AppButton from '@/components/AppButton';
-import { COLORS } from '@/constants/colors';
+import AppTextInput from '@/components/AppTextInput';
+import AppearancePicker from '@/components/AppearancePicker';
+import { useTheme } from '@/lib/theme';
 import { useAuth, signOut, syncProfile } from '@/lib/auth';
 import {
   getProfile,
@@ -18,9 +21,21 @@ import {
   type Profile,
   type Role,
 } from '@/lib/profiles';
+import type { Palette, Radius } from '@/constants/themes';
+
+function initialsOf(name: string, email: string) {
+  const source = name.trim() || email.trim();
+  if (!source) return '?';
+  const parts = source.split(/[\s@._-]+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? '';
+  const second = parts.length > 1 ? parts[parts.length - 1][0] ?? '' : '';
+  return (first + second).toUpperCase() || '?';
+}
 
 export default function ProfileScreen() {
   const { user, session } = useAuth();
+  const { colors, radius } = useTheme();
+  const styles = makeStyles(colors, radius);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState('');
@@ -93,32 +108,65 @@ export default function ProfileScreen() {
     }
   };
 
+  const displayName = profile?.full_name || '';
+  const email = profile?.email ?? user?.email ?? '';
+
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       <Text style={styles.title}>My Profile</Text>
 
-      {effectiveRole === 'teacher' ? (
-        <View style={styles.roleBadge}>
-          <Text style={styles.roleBadgeText}>Teacher</Text>
-        </View>
-      ) : (
-        <View style={[styles.roleBadge, styles.roleBadgeStudent]}>
-          <Text style={[styles.roleBadgeText, styles.roleBadgeTextStudent]}>
-            Student
+      <View style={styles.identityCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {initialsOf(displayName, email)}
           </Text>
         </View>
-      )}
+        <View style={styles.identityText}>
+          <Text style={styles.identityName} numberOfLines={1}>
+            {displayName || 'Unnamed account'}
+          </Text>
+          <Text style={styles.identityEmail} numberOfLines={1}>
+            {email || '-'}
+          </Text>
+          <View
+            style={[
+              styles.roleBadge,
+              effectiveRole !== 'teacher' && styles.roleBadgeStudent,
+            ]}
+          >
+            <Ionicons
+              name={effectiveRole === 'teacher' ? 'briefcase' : 'school'}
+              size={11}
+              color={effectiveRole === 'teacher' ? colors.textOnPrimary : colors.primary}
+            />
+            <Text
+              style={[
+                styles.roleBadgeText,
+                effectiveRole !== 'teacher' && styles.roleBadgeTextStudent,
+              ]}
+            >
+              {effectiveRole === 'teacher' ? 'Teacher' : 'Student'}
+            </Text>
+          </View>
+        </View>
+      </View>
 
       <View style={styles.infoCard}>
         <Text style={styles.label}>Name</Text>
         {editing ? (
           <View style={styles.nameEditRow}>
-            <TextInput
+            <AppTextInput
               style={styles.nameInput}
+              compact
               value={draftName}
               onChangeText={setDraftName}
               placeholder="Enter your name"
-              placeholderTextColor={COLORS.textSecondary}
+              placeholderTextColor={colors.muted}
               editable={!saving}
             />
             <Pressable
@@ -136,7 +184,10 @@ export default function ProfileScreen() {
             <Text style={styles.value}>
               {profile?.full_name || 'Tap to add your name'}
             </Text>
-            <Text style={styles.editHint}>Edit</Text>
+            <View style={styles.editHint}>
+              <Ionicons name="create-outline" size={14} color={colors.primary} />
+              <Text style={styles.editHintText}>Edit</Text>
+            </View>
           </Pressable>
         )}
 
@@ -172,133 +223,214 @@ export default function ProfileScreen() {
         </Text>
 
         <Text style={styles.label}>User ID</Text>
-        <Text style={styles.valueSmall}>{user?.id ?? '-'}</Text>
+        <View style={styles.idRow}>
+          <Ionicons name="finger-print-outline" size={14} color={colors.muted} />
+          <Text style={styles.valueSmall}>{user?.id ?? '-'}</Text>
+        </View>
       </View>
+
+      <AppearancePicker />
 
       <AppButton
         title="Sign Out"
         icon="log-out-outline"
+        variant="danger"
         onPress={handleSignOut}
         disabled={loading}
       />
-    </View>
+    </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: 16,
-  },
-  roleBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.primary,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginBottom: 16,
-  },
-  roleBadgeStudent: {
-    backgroundColor: COLORS.surface,
-  },
-  roleBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  roleBadgeTextStudent: {
-    color: COLORS.textPrimary,
-  },
-  infoCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 24,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-    marginTop: 8,
-  },
-  value: {
-    fontSize: 15,
-    color: COLORS.textPrimary,
-    fontWeight: '500',
-  },
-  valueSmall: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  roleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  roleSwitch: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  roleHint: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 6,
-    lineHeight: 17,
-  },
-  editHint: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  nameEditRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  nameInput: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: COLORS.textPrimary,
-    marginRight: 8,
-  },
-  saveButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-});
+const makeStyles = (c: Palette, r: Radius) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: 24,
+      paddingTop: 24,
+      paddingBottom: 32,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: c.textPrimary,
+      marginBottom: 16,
+      letterSpacing: 0.2,
+    },
+    identityCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: c.card,
+      borderRadius: r.card,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 16,
+      marginBottom: 14,
+      shadowColor: c.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: c.shadowOpacity,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    avatar: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: c.tint,
+      borderWidth: 2,
+      borderColor: c.primary + '66',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+    },
+    avatarText: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: c.primary,
+      letterSpacing: 0.5,
+    },
+    identityText: {
+      flex: 1,
+    },
+    identityName: {
+      fontSize: 17,
+      fontWeight: '800',
+      color: c.textPrimary,
+      marginBottom: 2,
+    },
+    identityEmail: {
+      fontSize: 13,
+      color: c.muted,
+      marginBottom: 8,
+    },
+    roleBadge: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: c.primary,
+      borderRadius: r.chip,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    roleBadgeStudent: {
+      backgroundColor: c.tint,
+    },
+    roleBadgeText: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      marginLeft: 5,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    roleBadgeTextStudent: {
+      color: c.primary,
+    },
+    infoCard: {
+      backgroundColor: c.card,
+      borderRadius: r.card,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 16,
+      marginBottom: 16,
+      shadowColor: c.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: c.shadowOpacity,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    label: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: c.muted,
+      marginBottom: 4,
+      marginTop: 10,
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+    },
+    value: {
+      fontSize: 15,
+      color: c.textPrimary,
+      fontWeight: '600',
+    },
+    valueSmall: {
+      fontSize: 11,
+      color: c.muted,
+      fontFamily: 'monospace',
+      flexShrink: 1,
+    },
+    idRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: c.surface,
+      borderRadius: r.input,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    roleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: c.surface,
+      borderRadius: r.input,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    roleSwitch: {
+      backgroundColor: c.primary,
+      borderRadius: r.chip,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    roleHint: {
+      fontSize: 12,
+      color: c.muted,
+      marginTop: 6,
+      lineHeight: 17,
+    },
+    editHint: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    editHintText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: c.primary,
+      marginLeft: 4,
+    },
+    nameEditRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    nameInput: {
+      flex: 1,
+      backgroundColor: c.surface,
+      marginRight: 8,
+    },
+    saveButton: {
+      backgroundColor: c.primary,
+      borderRadius: r.chip,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    saveButtonDisabled: {
+      opacity: 0.6,
+    },
+    saveButtonText: {
+      color: c.textOnPrimary,
+      fontSize: 14,
+      fontWeight: '800',
+    },
+  });
